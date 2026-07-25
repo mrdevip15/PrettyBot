@@ -1136,9 +1136,18 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["gift_recipient"] = text
         await process_package_order(update, context, pkg_key, gift_recipient=text)
 
+def get_user_id(update_or_query) -> int:
+    if hasattr(update_or_query, "effective_user") and update_or_query.effective_user:
+        return update_or_query.effective_user.id
+    if hasattr(update_or_query, "from_user") and update_or_query.from_user:
+        return update_or_query.from_user.id
+    if hasattr(update_or_query, "message") and update_or_query.message:
+        return update_or_query.message.chat_id
+    return 0
+
 # --- PROCESS TOPUP & PACKAGES ---
 async def process_topup_order(update_or_query, context: ContextTypes.DEFAULT_TYPE, amount: int):
-    user_id = update_or_query.effective_user.id
+    user_id = get_user_id(update_or_query)
     unique_digit = random.randint(100, 999)
     exact_amount = amount + unique_digit
 
@@ -1176,7 +1185,7 @@ async def process_topup_order(update_or_query, context: ContextTypes.DEFAULT_TYP
         await update_or_query.message.reply_text(text=invoice_text, parse_mode="Markdown", reply_markup=keyboard)
 
 async def process_package_order(update_or_query, context: ContextTypes.DEFAULT_TYPE, pkg_key: str, gift_recipient: str = None):
-    user_id = update_or_query.effective_user.id
+    user_id = get_user_id(update_or_query)
     pkg_info = PACKAGES[pkg_key]
     
     coupon_info = context.user_data.get("applied_coupon", {})
