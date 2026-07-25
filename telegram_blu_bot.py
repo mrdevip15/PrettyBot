@@ -123,7 +123,12 @@ def find_user_chat_id(recipient_str: str) -> int:
     users = load_users()
     for uid_str, info in users.items():
         uname = (info.get("username") or "").strip().lstrip("@").lower()
+        fname = (info.get("full_name") or "").strip().lower()
         if uname and uname == clean:
+            return int(uid_str)
+        if fname and fname == clean:
+            return int(uid_str)
+        if uid_str == clean:
             return int(uid_str)
 
     return None
@@ -764,6 +769,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def myid_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    register_user(user.id, user.username, user.full_name)
     user_bal = get_user_balance(user.id)
     vip = get_user_vip_info(user.id)
     has_claimed = has_user_claimed_flash_sale(user.id)
@@ -1136,7 +1142,10 @@ async def admin_gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- TEXT MESSAGE HANDLER (FOR INTERACTIVE INPUTS) ---
 async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
+    user = update.effective_user
+    if user:
+        register_user(user.id, user.username, user.full_name)
+    user_id = user.id
     awaiting = context.user_data.get("awaiting_input")
     text = update.message.text.strip()
 
@@ -1424,6 +1433,10 @@ async def process_package_order(update_or_query, context: ContextTypes.DEFAULT_T
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+
+    user = update.effective_user
+    if user:
+        register_user(user.id, user.username, user.full_name)
 
     user_id = query.message.chat_id
     pkg_key = query.data
