@@ -610,7 +610,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         sale_banner = ""
 
     welcome_text = (
-        f"👑 *Pretty Pet Salon - Auto Payment (blu BCA)*\n\n"
+        f"👑 *Pretty Pet Salon - Auto Payment (blu BCA)* ✨ *(Auto-Deploy Active ✅)*\n\n"
         f"{sale_banner}"
         f"💰 *Saldo Anda*: `{fmt_idr(user_bal)}`\n"
         f"*(Jika Anda beli paket saat saldo cukup, voucher akan dikirim INSTANT!)*\n\n"
@@ -1146,7 +1146,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             sale_banner = ""
 
         welcome_text = (
-            f"👑 *Pretty Pet Salon - Auto Payment (blu BCA)*\n\n"
+            f"👑 *Pretty Pet Salon - Auto Payment (blu BCA)* ✨ *(Auto-Deploy Active ✅)*\n\n"
             f"{sale_banner}"
             f"💰 *Saldo Anda*: `{fmt_idr(user_bal)}`\n\n"
             f"Silakan pilih paket Pet Points yang ingin dibeli:"
