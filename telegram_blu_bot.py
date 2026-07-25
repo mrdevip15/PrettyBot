@@ -1219,7 +1219,7 @@ def main():
     # Callback Query Handler
     app.add_handler(CallbackQueryHandler(button_callback))
 
-    print("🤖 Bot Telegram Auto-Payment (blu BCA & Complete Features) Aktif...")
+    print("🤖 Bot Telegram Auto-Payment (blu BCA & Webhook Auto-Deploy) Aktif...")
     app.run_polling()
 
 if __name__ == "__main__":
