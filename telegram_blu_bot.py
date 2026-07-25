@@ -708,7 +708,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         sale_banner = ""
 
     welcome_text = (
-        f"👑 *Pretty Pet Salon - Auto Payment (blu BCA)* ✨ *(Auto-Deploy Active ✅)*\n\n"
+        f"👑 *Pretty Pet Salon✨\n\n"
         f"{sale_banner}"
         f"👤 *Level VIP*: {vip['badge']} *{vip['tier']}* (Diskon {vip['disc_pct']}% | Cashback {vip['cashback_pct']}%)\n"
         f"💰 *Saldo Anda*: `{fmt_idr(user_bal)}`\n"
@@ -1423,7 +1423,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             sale_banner = ""
 
         welcome_text = (
-            f"👑 *Pretty Pet Salon - Auto Payment (blu BCA)* ✨ *(Auto-Deploy Active ✅)*\n\n"
+            f"👑 *Pretty Pet Salon\n\n"
             f"{sale_banner}"
             f"👤 *Level VIP*: {vip['badge']} *{vip['tier']}* (Diskon {vip['disc_pct']}% | Cashback {vip['cashback_pct']}%)\n"
             f"💰 *Saldo Anda*: `{fmt_idr(user_bal)}`\n\n"
