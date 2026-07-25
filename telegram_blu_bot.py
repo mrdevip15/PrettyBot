@@ -111,6 +111,23 @@ def register_user(user_id: int, username: str, full_name: str, referred_by: int 
 
     return users[uid_str], is_new
 
+def find_user_chat_id(recipient_str: str) -> int:
+    if not recipient_str:
+        return None
+
+    clean = recipient_str.strip().lstrip("@").lower()
+
+    if clean.isdigit():
+        return int(clean)
+
+    users = load_users()
+    for uid_str, info in users.items():
+        uname = (info.get("username") or "").strip().lstrip("@").lower()
+        if uname and uname == clean:
+            return int(uid_str)
+
+    return None
+
 def trigger_referral_reward_if_eligible(user_id: int, app: Application, loop):
     users = load_users()
     uid_str = str(user_id)
@@ -608,16 +625,44 @@ def check_gmail_for_blu_transfers(app: Application, loop):
 
                                     prefix = "🎉 *PEMBAYARAN TERDETEKSI! (Sempat Dibatalkan)*\n\n" if was_cancelled else "🎉 *PEMBAYARAN DITERIMA VIA BLU BCA!*\n\n"
                                     
-                                    if gift_to:
+                                    sender_name = inv.get("sender_name", f"User {chat_id}")
+                                    rec_id = find_user_chat_id(gift_to) if gift_to else None
+
+                                    if gift_to and rec_id:
+                                        rec_msg = (
+                                            f"🎁 *ANDA MENERIMA HADIAH VOUCHER!* 🎁\n\n"
+                                            f"👤 *Dari*: {sender_name}\n"
+                                            f"📦 *Paket*: {actual_pkg_name}\n\n"
+                                            f"🔑 *Kode Voucher Anda (Tap untuk Copy)*:\n"
+                                            f"`{token}`\n\n"
+                                            f"📌 *Cara Redeem di Game*:\n"
+                                            f"1. Buka Game Pretty Pet Salon -> Store\n"
+                                            f"2. Tap Paket *{actual_pkg_name}*\n"
+                                            f"3. Tempel Kode di atas -> Tap *Redeem*"
+                                        )
+                                        asyncio.run_coroutine_threadsafe(
+                                            app.bot.send_message(chat_id=rec_id, text=rec_msg, parse_mode="Markdown"),
+                                            loop
+                                        )
+
+                                        success_msg = (
+                                            f"{prefix}"
+                                            f"💵 *Nominal Masuk*: {fmt_idr(amt)}\n"
+                                            f"📦 *Paket*: {actual_pkg_name}\n"
+                                            f"🎁 *Hadiah Terkirim Ke*: `{gift_to}`\n"
+                                            f"{new_balance_text}{cashback_text}\n\n"
+                                            f"✅ *Voucher telah otomatis dikirimkan oleh Bot langsung ke chat {gift_to}!*"
+                                        )
+                                    elif gift_to and not rec_id:
                                         success_msg = (
                                             f"{prefix}"
                                             f"💵 *Nominal Masuk*: {fmt_idr(amt)}\n"
                                             f"📦 *Paket*: {actual_pkg_name}\n"
                                             f"🎁 *Hadiah Untuk*: `{gift_to}`\n"
                                             f"{new_balance_text}{cashback_text}\n\n"
-                                            f"🔑 *Kode Voucher Hadiah (Tap untuk Copy)*:\n"
-                                            f"`{token}`\n\n"
-                                            f"📌 Silakan bagikan kode voucher ini kepada {gift_to}!"
+                                            f"⚠️ *Catatan*: `{gift_to}` belum pernah menjalankan bot ini (`/start`), sehingga Bot belum bisa mengirim pesan langsung ke chatnya.\n\n"
+                                            f" Silakan bagikan kode voucher hadiah ini secara manual kepada `{gift_to}`:\n"
+                                            f"🔑 *Kode Voucher*: `{token}`"
                                         )
                                     else:
                                         success_msg = (
@@ -1246,20 +1291,60 @@ async def process_package_order(update_or_query, context: ContextTypes.DEFAULT_T
         trigger_referral_reward_if_eligible(user_id, context.application, asyncio.get_running_loop())
         add_history_record(item_price, actual_pkg_name, token, user_id, gift_recipient or "Self")
 
-        gift_tag = f"\n🎁 *Dikirim Sebagai Hadiah Ke*: `{gift_recipient}`" if gift_recipient else ""
+        sender = update_or_query.effective_user if hasattr(update_or_query, 'effective_user') and update_or_query.effective_user else (update_or_query.from_user if hasattr(update_or_query, 'from_user') else None)
+        sender_name = f"@{sender.username}" if sender and sender.username else (sender.full_name if sender else f"User {user_id}")
 
-        instant_text = (
-            f"🎉 *PEMBAYARAN SUKSES VIA SALDO BOT!*\n\n"
-            f"📦 *Paket*: {actual_pkg_name}{gift_tag}\n"
-            f"💰 *Harga*: {fmt_idr(item_price)} {'*(Diskon Flash Sale/VIP Applied)*' if is_flash or vip['disc_pct'] > 0 else ''}\n"
-            f"💳 *Sisa Saldo Anda*: {fmt_idr(rem_bal)}{cashback_text}\n\n"
-            f"🔑 *Kode Voucher (Tap untuk Copy)*:\n"
-            f"`{token}`\n\n"
-            f"📌 *Cara Redeem di Game*:\n"
-            f"1. Buka Game Pretty Pet Salon -> Store\n"
-            f"2. Tap Paket *{actual_pkg_name}*\n"
-            f"3. Tempel Kode di atas -> Tap *Redeem*"
-        )
+        rec_id = find_user_chat_id(gift_recipient) if gift_recipient else None
+
+        if gift_recipient and rec_id:
+            rec_msg = (
+                f"🎁 *ANDA MENERIMA HADIAH VOUCHER!* 🎁\n\n"
+                f"👤 *Dari*: {sender_name}\n"
+                f"📦 *Paket*: {actual_pkg_name}\n\n"
+                f"🔑 *Kode Voucher Anda (Tap untuk Copy)*:\n"
+                f"`{token}`\n\n"
+                f"📌 *Cara Redeem di Game*:\n"
+                f"1. Buka Game Pretty Pet Salon -> Store\n"
+                f"2. Tap Paket *{actual_pkg_name}*\n"
+                f"3. Tempel Kode di atas -> Tap *Redeem*"
+            )
+            asyncio.run_coroutine_threadsafe(
+                context.application.bot.send_message(chat_id=rec_id, text=rec_msg, parse_mode="Markdown"),
+                asyncio.get_running_loop()
+            )
+
+            instant_text = (
+                f"🎉 *PEMBAYARAN SUKSES VIA SALDO BOT!*\n\n"
+                f"📦 *Paket*: {actual_pkg_name}\n"
+                f"🎁 *Hadiah Terkirim Ke*: `{gift_recipient}`\n"
+                f"💰 *Harga*: {fmt_idr(item_price)} {'*(Diskon Flash Sale/VIP Applied)*' if is_flash or vip['disc_pct'] > 0 else ''}\n"
+                f"💳 *Sisa Saldo Anda*: {fmt_idr(rem_bal)}{cashback_text}\n\n"
+                f"✅ *Voucher telah dikirimkan secara otomatis oleh Bot langsung ke chat {gift_recipient}!*"
+            )
+        elif gift_recipient and not rec_id:
+            instant_text = (
+                f"🎉 *PEMBAYARAN SUKSES VIA SALDO BOT!*\n\n"
+                f"📦 *Paket*: {actual_pkg_name}\n"
+                f"🎁 *Hadiah Untuk*: `{gift_recipient}`\n"
+                f"💰 *Harga*: {fmt_idr(item_price)} {'*(Diskon Flash Sale/VIP Applied)*' if is_flash or vip['disc_pct'] > 0 else ''}\n"
+                f"💳 *Sisa Saldo Anda*: {fmt_idr(rem_bal)}{cashback_text}\n\n"
+                f"⚠️ *Catatan*: `{gift_recipient}` belum pernah menjalankan bot ini (`/start`), sehingga Bot belum bisa mengirim pesan langsung ke chatnya.\n\n"
+                f" Silakan bagikan kode voucher hadiah ini secara manual kepada `{gift_recipient}`:\n"
+                f"🔑 *Kode Voucher*: `{token}`"
+            )
+        else:
+            instant_text = (
+                f"🎉 *PEMBAYARAN SUKSES VIA SALDO BOT!*\n\n"
+                f"📦 *Paket*: {actual_pkg_name}\n"
+                f"💰 *Harga*: {fmt_idr(item_price)} {'*(Diskon Flash Sale/VIP Applied)*' if is_flash or vip['disc_pct'] > 0 else ''}\n"
+                f"💳 *Sisa Saldo Anda*: {fmt_idr(rem_bal)}{cashback_text}\n\n"
+                f"🔑 *Kode Voucher (Tap untuk Copy)*:\n"
+                f"`{token}`\n\n"
+                f"📌 *Cara Redeem di Game*:\n"
+                f"1. Buka Game Pretty Pet Salon -> Store\n"
+                f"2. Tap Paket *{actual_pkg_name}*\n"
+                f"3. Tempel Kode di atas -> Tap *Redeem*"
+            )
         keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Kembali ke Menu Utama", callback_data="start_menu")]])
         if hasattr(update_or_query, "edit_message_text"):
             await update_or_query.edit_message_text(text=instant_text, parse_mode="Markdown", reply_markup=keyboard)
@@ -1275,6 +1360,9 @@ async def process_package_order(update_or_query, context: ContextTypes.DEFAULT_T
 
     msg_id = update_or_query.message.message_id if hasattr(update_or_query, "message") and update_or_query.message else None
 
+    sender = update_or_query.effective_user if hasattr(update_or_query, 'effective_user') and update_or_query.effective_user else (update_or_query.from_user if hasattr(update_or_query, 'from_user') else None)
+    sender_name = f"@{sender.username}" if sender and sender.username else (sender.full_name if sender else f"User {user_id}")
+
     PENDING_INVOICES[exact_amount] = {
         "chat_id": user_id,
         "message_id": msg_id,
@@ -1284,6 +1372,7 @@ async def process_package_order(update_or_query, context: ContextTypes.DEFAULT_T
         "overpay": overpay,
         "is_flash_sale": is_flash,
         "gift_to": gift_recipient,
+        "sender_name": sender_name,
         "timestamp": time.time()
     }
     save_pending_orders(PENDING_INVOICES)
